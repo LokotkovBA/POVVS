@@ -16,7 +16,7 @@ __global__ void func_Kernel(char *A, char *B, char *C, double *D, double *X, int
 	{
 		for (j = 0; j < 2 * M; j++)
 		{
-			X[idx_thread*s + i] = (double)A[idx_thread*s + i] * X[idx_thread*s + i] * (X[idx_thread*s + i] * C[idx_thread*s + i] + B[idx_thread*s + i] / D[idx_thread*s + i]);
+			X[idx_thread*s + i] = (double)A[idx_thread*s + i] * X[idx_thread*s + i] * (X[idx_thread*s + i] * C[idx_thread*s + i] + B[idx_thread*s + i]) / D[idx_thread*s + i];
 		}
 	}
 }
@@ -24,13 +24,15 @@ __global__ void func_Kernel(char *A, char *B, char *C, double *D, double *X, int
 int main()
 {
 	char A[N], B[N], C[N];
-	
+
 	double X[N], D[N];
 
 	char *dev_a, *dev_b, *dev_c;
 	double *dev_d, *dev_x;
 
-	int blocks, blocksize, steps, amIt;
+	int steps, amIt;
+	int blocks[3] = { 1, 2, 4 };
+	int blocksize[4] = { 1,4,32,256 };
 	float srd = 0;
 	float elapsedTime;
 	int i, j;
@@ -39,99 +41,106 @@ int main()
 	{
 		for (j = 0; j < 2 * M; j++)
 		{
-			X[i] = (double)A[i] * X[i] * (X[i] * C[i] + B[i] / D[i]);
+			X[i] = (double)A[i] * X[i] * (X[i] * C[i] + B[i]) / D[i];
 		}
 	}*/
 
 
 	while (true)
 	{
-		srd = 0;
-		printf("Number of blocks: ");
-		scanf("%d", &blocks);
-		printf("Block size: ");
-		scanf("%d", &blocksize);
-		amIt = 35;
+		printf("Number of iterations: ");
+		scanf("%d", &amIt);
+
 		int numIt = amIt;
+		
 
-		while (amIt > 0)
+		for (int numB = 0; numB < 3; numB++)
 		{
-			cudaEvent_t start, stop; //ids of events
-			cudaEventCreate(&start); //inits of events
-			cudaEventCreate(&stop);
-
-			for (i = 0; i < N; i++)
+			for (int numT = 0; numT < 4; numT++)
 			{
-				A[i] = i + 1;
-				B[i] = i + 2;
-				C[i] = i + 3;
-				D[i] = i + 4;
+				amIt = numIt;
+				while (amIt > 0)
+				{
+					cudaEvent_t start, stop; //ids of events
+					cudaEventCreate(&start); //inits of events
+					cudaEventCreate(&stop);
+
+					for (i = 0; i < N; i++)
+					{
+						A[i] = i + 1;
+						B[i] = i + 2;
+						C[i] = i + 3;
+						D[i] = i + 4;
+					}
+
+
+
+					// Choose which GPU to run on, change this on a multi-GPU system.
+					cudaSetDevice(0);
+
+
+					// Allocate GPU buffers for five vectors
+					cudaMalloc((void**)&dev_a, N * sizeof(char));
+					cudaMalloc((void**)&dev_b, N * sizeof(char));
+					cudaMalloc((void**)&dev_c, N * sizeof(char));
+					cudaMalloc((void**)&dev_d, N * sizeof(double));
+					cudaMalloc((void**)&dev_x, N * sizeof(double));
+
+					//blocks = 1; blocksize = 1;
+					steps = (int)N / (blocks[numB]*blocksize[numT]);
+
+					cudaEventRecord(start, 0); //capture of event start
+
+					// Copy input vectors from host memory to GPU buffers.
+					cudaMemcpy(dev_a, A, N * sizeof(char), cudaMemcpyHostToDevice);
+					cudaMemcpy(dev_b, B, N * sizeof(char), cudaMemcpyHostToDevice);
+					cudaMemcpy(dev_c, C, N * sizeof(char), cudaMemcpyHostToDevice);
+					cudaMemcpy(dev_d, D, N * sizeof(double), cudaMemcpyHostToDevice);
+					cudaMemcpy(dev_x, X, N * sizeof(double), cudaMemcpyHostToDevice);
+
+
+
+
+
+					// Launch a kernel on the GPU with one thread for each element.
+					func_Kernel << <blocks[numB], blocksize[numT] >> > (dev_a, dev_b, dev_c, dev_d, dev_x, steps);
+
+					// cudaDeviceSynchronize waits for the kernel to finish
+					cudaDeviceSynchronize();
+
+					// Copy output vector from GPU buffer to host memory.
+					cudaMemcpy(X, dev_x, N * sizeof(double), cudaMemcpyDeviceToHost);
+
+					cudaFree(dev_a);
+					cudaFree(dev_b);
+					cudaFree(dev_c);
+					cudaFree(dev_d);
+					cudaFree(dev_x);
+
+					cudaEventRecord(stop, 0); //capture of event stop
+					cudaEventSynchronize(stop); //waits for an event to complete
+					cudaEventElapsedTime(&elapsedTime, start, stop); //computes the elapsed time between events
+
+					//printf("[%d]Elapsed time of GPU computing = %f ms\n", numIt - amIt + 1, elapsedTime);
+
+					srd += elapsedTime;
+
+					// cudaDeviceReset must be called before exiting in order for profiling and
+					// tracing tools such as Nsight and Visual Profiler to show complete traces.
+					cudaDeviceReset();
+					amIt--;
+				}
+
+				srd /= numIt;
+				printf("[blocks: %d, threads: %d]Average elapsed time of GPU computing = %f ms\n", blocks[numB], blocksize[numT], srd);
+				printf("============================================================\n");
+				srd = 0;
 			}
 
-
-
-			// Choose which GPU to run on, change this on a multi-GPU system.
-			cudaSetDevice(0);
-
-
-			// Allocate GPU buffers for five vectors
-			cudaMalloc((void**)&dev_a, N * sizeof(char));
-			cudaMalloc((void**)&dev_b, N * sizeof(char));
-			cudaMalloc((void**)&dev_c, N * sizeof(char));
-			cudaMalloc((void**)&dev_d, N * sizeof(double));
-			cudaMalloc((void**)&dev_x, N * sizeof(double));
-
-			//blocks = 1; blocksize = 1;
-			steps = (int)N / (blocks*blocksize);
-
-			cudaEventRecord(start, 0); //capture of event start
-
-			// Copy input vectors from host memory to GPU buffers.
-			cudaMemcpy(dev_a, A, N * sizeof(char), cudaMemcpyHostToDevice);
-			cudaMemcpy(dev_b, B, N * sizeof(char), cudaMemcpyHostToDevice);
-			cudaMemcpy(dev_c, C, N * sizeof(char), cudaMemcpyHostToDevice);
-			cudaMemcpy(dev_d, D, N * sizeof(double), cudaMemcpyHostToDevice);
-			cudaMemcpy(dev_x, X, N * sizeof(double), cudaMemcpyHostToDevice);
-
-
-			
-
-			
-			// Launch a kernel on the GPU with one thread for each element.
-			func_Kernel << <blocks, blocksize >> > (dev_a, dev_b, dev_c, dev_d, dev_x, steps);
-
-			// cudaDeviceSynchronize waits for the kernel to finish
-			cudaDeviceSynchronize();
-
-			// Copy output vector from GPU buffer to host memory.
-			cudaMemcpy(X, dev_x, N * sizeof(double), cudaMemcpyDeviceToHost);
-
-			cudaFree(dev_a);
-			cudaFree(dev_b);
-			cudaFree(dev_c);
-			cudaFree(dev_d);
-			cudaFree(dev_x);
-
-			cudaEventRecord(stop, 0); //capture of event stop
-			cudaEventSynchronize(stop); //waits for an event to complete
-			cudaEventElapsedTime(&elapsedTime, start, stop); //computes the elapsed time between events
-
-			printf("[%d]Elapsed time of GPU computing = %f ms\n", numIt - amIt + 1, elapsedTime);
-
-			srd += elapsedTime;
-
-			// cudaDeviceReset must be called before exiting in order for profiling and
-			// tracing tools such as Nsight and Visual Profiler to show complete traces.
-			cudaDeviceReset();
-			amIt--;
 		}
-
-		srd /= numIt;
-		printf("Average elapsed time of GPU computing = %f ms\n", srd);
-		printf("============================================================\n");
 	}
 
-    return 0;
+	return 0;
 }
 
 /*
