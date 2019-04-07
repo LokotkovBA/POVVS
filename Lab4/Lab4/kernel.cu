@@ -4,56 +4,137 @@
 
 #include <stdio.h>
 
-#define M 21*7 + 234
+#define M 381 //21*7 + 234
 #define N 512
 
-cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size);
-
-__global__ void addKernel(int *c, const int *a, const int *b)
+__global__ void func_Kernel(char *A, char *B, char *C, double *D, double *X, int s)
 {
-    int i = threadIdx.x;
-    c[i] = a[i] + b[i];
+	int idx_thread = blockIdx.x * blockDim.x + threadIdx.x;
+	int i, j;
+
+	for (i = 0; i < N; i++)
+	{
+		for (j = 0; j < 2 * M; j++)
+		{
+			X[idx_thread*s + i] = (double)A[idx_thread*s + i] * X[idx_thread*s + i] * (X[idx_thread*s + i] * C[idx_thread*s + i] + B[idx_thread*s + i] / D[idx_thread*s + i]);
+		}
+	}
 }
 
 int main()
 {
-    const int arraySize = 5;
-    const int a[arraySize] = { 1, 2, 3, 4, 5 };
-    const int b[arraySize] = { 10, 20, 30, 40, 50 };
-    int c[arraySize] = { 0 };
-
 	char A[N], B[N], C[N];
+	
 	double X[N], D[N];
 
-	for(int i = 0; i < N; i++)
+	char *dev_a, *dev_b, *dev_c;
+	double *dev_d, *dev_x;
+
+	int blocks, blocksize, steps, amIt;
+	float srd = 0;
+	float elapsedTime;
+	int i, j;
+
+	/*for(i = 0; i < N; i++)
 	{
-		for (int j; j < 2 * M; j++)
+		for (j = 0; j < 2 * M; j++)
 		{
 			X[i] = (double)A[i] * X[i] * (X[i] * C[i] + B[i] / D[i]);
 		}
+	}*/
+
+
+	while (true)
+	{
+		srd = 0;
+		printf("Number of blocks: ");
+		scanf("%d", &blocks);
+		printf("Block size: ");
+		scanf("%d", &blocksize);
+		amIt = 35;
+		int numIt = amIt;
+
+		while (amIt > 0)
+		{
+			cudaEvent_t start, stop; //ids of events
+			cudaEventCreate(&start); //inits of events
+			cudaEventCreate(&stop);
+
+			for (i = 0; i < N; i++)
+			{
+				A[i] = i + 1;
+				B[i] = i + 2;
+				C[i] = i + 3;
+				D[i] = i + 4;
+			}
+
+
+
+			// Choose which GPU to run on, change this on a multi-GPU system.
+			cudaSetDevice(0);
+
+
+			// Allocate GPU buffers for five vectors
+			cudaMalloc((void**)&dev_a, N * sizeof(char));
+			cudaMalloc((void**)&dev_b, N * sizeof(char));
+			cudaMalloc((void**)&dev_c, N * sizeof(char));
+			cudaMalloc((void**)&dev_d, N * sizeof(double));
+			cudaMalloc((void**)&dev_x, N * sizeof(double));
+
+			//blocks = 1; blocksize = 1;
+			steps = (int)N / (blocks*blocksize);
+
+			cudaEventRecord(start, 0); //capture of event start
+
+			// Copy input vectors from host memory to GPU buffers.
+			cudaMemcpy(dev_a, A, N * sizeof(char), cudaMemcpyHostToDevice);
+			cudaMemcpy(dev_b, B, N * sizeof(char), cudaMemcpyHostToDevice);
+			cudaMemcpy(dev_c, C, N * sizeof(char), cudaMemcpyHostToDevice);
+			cudaMemcpy(dev_d, D, N * sizeof(double), cudaMemcpyHostToDevice);
+			cudaMemcpy(dev_x, X, N * sizeof(double), cudaMemcpyHostToDevice);
+
+
+			
+
+			
+			// Launch a kernel on the GPU with one thread for each element.
+			func_Kernel << <blocks, blocksize >> > (dev_a, dev_b, dev_c, dev_d, dev_x, steps);
+
+			// cudaDeviceSynchronize waits for the kernel to finish
+			cudaDeviceSynchronize();
+
+			// Copy output vector from GPU buffer to host memory.
+			cudaMemcpy(X, dev_x, N * sizeof(double), cudaMemcpyDeviceToHost);
+
+			cudaFree(dev_a);
+			cudaFree(dev_b);
+			cudaFree(dev_c);
+			cudaFree(dev_d);
+			cudaFree(dev_x);
+
+			cudaEventRecord(stop, 0); //capture of event stop
+			cudaEventSynchronize(stop); //waits for an event to complete
+			cudaEventElapsedTime(&elapsedTime, start, stop); //computes the elapsed time between events
+
+			printf("[%d]Elapsed time of GPU computing = %f ms\n", numIt - amIt + 1, elapsedTime);
+
+			srd += elapsedTime;
+
+			// cudaDeviceReset must be called before exiting in order for profiling and
+			// tracing tools such as Nsight and Visual Profiler to show complete traces.
+			cudaDeviceReset();
+			amIt--;
+		}
+
+		srd /= numIt;
+		printf("Average elapsed time of GPU computing = %f ms\n", srd);
+		printf("============================================================\n");
 	}
-
-
-    // Add vectors in parallel.
-    cudaError_t cudaStatus = addWithCuda(c, a, b, arraySize);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "addWithCuda failed!");
-        return 1;
-    }
-
-    printf("{1,2,3,4,5} + {10,20,30,40,50} = {%d,%d,%d,%d,%d}\n",
-        c[0], c[1], c[2], c[3], c[4]);
-
-    // cudaDeviceReset must be called before exiting in order for profiling and
-    // tracing tools such as Nsight and Visual Profiler to show complete traces.
-    cudaStatus = cudaDeviceReset();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceReset failed!");
-        return 1;
-    }
 
     return 0;
 }
+
+/*
 
 // Helper function for using CUDA to add vectors in parallel.
 cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size)
@@ -133,4 +214,4 @@ Error:
     cudaFree(dev_b);
     
     return cudaStatus;
-}
+}*/
