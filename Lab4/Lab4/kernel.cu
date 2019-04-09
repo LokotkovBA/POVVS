@@ -5,27 +5,26 @@
 #include <stdio.h>
 
 #define M 381 //21*7 + 234
-#define N 512 //65565
-#define SZ 512
+#define N 512//65536 //512
 
 char A[N], B[N], C[N];
 double X[N], D[N];
-__constant__ char Ac[SZ], char Bc[SZ], char Cc[SZ], double Dc[SZ];
+//__constant__ char Ac[N], char Bc[N], char Cc[N], double Dc[N];
 
 
-__global__ void func_Kernel(/*char *A, char *B, char *C, double *D,*/ double *X, int s)
+__global__ void func_Kernel(char *A, char *B, char *C, double *D, double *X, int s)
 {
 	//----------------------------------------------------------------тут начинается пункт 3----------------------------------------------------------
-	/*int idx_thread = blockIdx.x * blockDim.x + threadIdx.x;
+	int idx_thread = blockIdx.x * blockDim.x + threadIdx.x;
 	int i, j;
 
-	for (i = 0; i < N; i++)
+	for (i = 0; i < s; i++)
 	{
 		for (j = 0; j < 2 * M; j++)
 		{
 			X[idx_thread*s + i] = (double)A[idx_thread*s + i] * X[idx_thread*s + i] * (X[idx_thread*s + i] * C[idx_thread*s + i] + B[idx_thread*s + i]) / D[idx_thread*s + i];
 		}
-	}*/
+	}
 	//----------------------------------------------------------------тут заканчивается пункт 3----------------------------------------------------------
 
 	//----------------------------------------------------------------тут начинается пункт 5----------------------------------------------------------
@@ -33,16 +32,16 @@ __global__ void func_Kernel(/*char *A, char *B, char *C, double *D,*/ double *X,
 	// blockDim.x	- размер блока
 	// threadIdx.x	- номер потока в текущем блоке
 	// gridDim.x	- размер сетки в блоках
-	/*__shared__ char as[SZ], char bs[SZ], char cs[SZ];
-	__shared__ double xs[SZ], double ds[SZ];
+	/*__shared__ char as[N], char bs[N], char cs[N];
+	__shared__ double xs[N], double ds[N];
 	int i,j;
 
 	int i_thread = threadIdx.x;
 	int idx_thread = blockIdx.x * blockDim.x + threadIdx.x; // номер потока
-	int threadCountGlobal = gridDim.x * blockDim.x;
+	int threadCountGlobal = gridDim.x * blockDim.x; //всего нитей во всех блоках
 
 
-	for (i = idx_thread; i < SZ; i += threadCountGlobal)
+	for (i = idx_thread; i < N; i += threadCountGlobal)
 	{
 		as[i_thread] = A[i];
 		bs[i_thread] = B[i];
@@ -65,7 +64,7 @@ __global__ void func_Kernel(/*char *A, char *B, char *C, double *D,*/ double *X,
 
 	//----------------------------------------------------------------тут начинается пункт 7----------------------------------------------------------
 
-	__shared__ double xs[SZ];
+	/*__shared__ double xs[SZ];
 	int i, j;
 
 	int i_thread = threadIdx.x;	//номер потока в задаче
@@ -80,7 +79,7 @@ __global__ void func_Kernel(/*char *A, char *B, char *C, double *D,*/ double *X,
 			xs[i_thread] = (double)Ac[i] * xs[i_thread] * (xs[i_thread] * Cc[i] + Bc[i]) / Dc[i];
 		}
 		X[i] = xs[i_thread];
-	}
+	}*/
 
 
 	//----------------------------------------------------------------тут заканчивается пункт 7----------------------------------------------------------
@@ -89,9 +88,9 @@ __global__ void func_Kernel(/*char *A, char *B, char *C, double *D,*/ double *X,
 
 int main()
 {
-	char A[N], B[N], C[N];
+	//char A[N], B[N], C[N];
 
-	double X[N], D[N];
+	//double X[N], D[N];
 
 	char *dev_a, *dev_b, *dev_c;
 	double *dev_d, *dev_x;
@@ -158,23 +157,23 @@ int main()
 					cudaEventRecord(start, 0); //capture of event start
 
 					// Copy input vectors from host memory to GPU buffers.
-					/*cudaMemcpy(dev_a, A, N * sizeof(char), cudaMemcpyHostToDevice);
-					cudaMemcpy(dev_b, B, N * sizeof(char), cudaMemcpyHostToDevice);  -----это для пунктов 3,5
+					cudaMemcpy(dev_a, A, N * sizeof(char), cudaMemcpyHostToDevice);
+					cudaMemcpy(dev_b, B, N * sizeof(char), cudaMemcpyHostToDevice); // -----это для пунктов 3,5
 					cudaMemcpy(dev_c, C, N * sizeof(char), cudaMemcpyHostToDevice);
-					cudaMemcpy(dev_d, D, N * sizeof(double), cudaMemcpyHostToDevice);*/
-					cudaMemcpy(dev_x, X, SZ * sizeof(double), cudaMemcpyHostToDevice);
+					cudaMemcpy(dev_d, D, N * sizeof(double), cudaMemcpyHostToDevice);
+					cudaMemcpy(dev_x, X, N * sizeof(double), cudaMemcpyHostToDevice);
 
-					cudaMemcpyToSymbol(Ac, A, sizeof(char)*SZ, cudaMemcpyHostToDevice);
+					/*cudaMemcpyToSymbol(Ac, A, sizeof(char)*SZ, cudaMemcpyHostToDevice);
 					cudaMemcpyToSymbol(Bc, B, sizeof(char)*SZ, cudaMemcpyHostToDevice);
 					cudaMemcpyToSymbol(Cc, C, sizeof(char)*SZ, cudaMemcpyHostToDevice);
-					cudaMemcpyToSymbol(Dc, D, sizeof(double)*SZ, cudaMemcpyHostToDevice);
+					cudaMemcpyToSymbol(Dc, D, sizeof(double)*SZ, cudaMemcpyHostToDevice);*/
 
 
 
 
 
 					// Launch a kernel on the GPU with one thread for each element.
-					func_Kernel << <blocks[numB], blocksize[numT] >> > (/*dev_a, dev_b, dev_c, dev_d,*/ dev_x, steps);
+					func_Kernel << <blocks[numB], blocksize[numT] >> > (dev_a, dev_b, dev_c, dev_d, dev_x, steps);
 
 					// cudaDeviceSynchronize waits for the kernel to finish
 					cudaDeviceSynchronize();
