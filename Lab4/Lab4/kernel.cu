@@ -9,7 +9,8 @@
 
 __global__ void func_Kernel(char *A, char *B, char *C, double *D, double *X, int s)
 {
-	int idx_thread = blockIdx.x * blockDim.x + threadIdx.x;
+	//----------------------------------------------------------------тут начинается пункт 3----------------------------------------------------------
+	/*int idx_thread = blockIdx.x * blockDim.x + threadIdx.x;
 	int i, j;
 
 	for (i = 0; i < N; i++)
@@ -18,7 +19,39 @@ __global__ void func_Kernel(char *A, char *B, char *C, double *D, double *X, int
 		{
 			X[idx_thread*s + i] = (double)A[idx_thread*s + i] * X[idx_thread*s + i] * (X[idx_thread*s + i] * C[idx_thread*s + i] + B[idx_thread*s + i]) / D[idx_thread*s + i];
 		}
+	}*/
+	//----------------------------------------------------------------тут заканчивается пункт 3----------------------------------------------------------
+
+	//----------------------------------------------------------------тут начинается пункт 5----------------------------------------------------------
+	// blockIdx.x	- номер блока в задаче
+	// blockDim.x	- размер блока
+	// threadIdx.x	- номер потока в текущем блоке
+	// gridDim.x	- размер сетки в блоках
+	__shared__ char as[N], char bs[N], char cs[N];
+	__shared__ double xs[N], double ds[N];
+
+	int i_thread = threadIdx.x;
+	int idx_thread = blockIdx.x * blockDim.x + threadIdx.x; // номер потока
+	int threadCountLocal = blockDim.x; //размерность блока
+	int threadCountGlobal = gridDim.x * blockDim.x;
+
+
+	for (int i = idx_thread; i < N; i += threadCountGlobal)
+	{
+		as[i_thread] = A[i];
+		bs[i_thread] = B[i];
+		cs[i_thread] = C[i];
+		ds[i_thread] = D[i];
+		xs[i_thread] = X[i];
+		for (int j = 0; j < 2 * M; j++)
+		{
+			xs[i_thread] = (double)A[i] * xs[i_thread] * (xs[i_thread] * C[i] + B[i]) / D[i]; //(double)(A[i] * xs[i_thread] + C[i] * xs[i_thread]) / B[i]; 
+		}
+		X[i] = xs[i_thread];
 	}
+
+	//----------------------------------------------------------------тут заканчивается пункт 5----------------------------------------------------------
+
 }
 
 int main()
