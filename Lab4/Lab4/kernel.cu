@@ -74,10 +74,12 @@ __global__ void func_Kernel(/*char *A, char *B, char *C, double *D,*/ double *X,
 	for (i = idx_thread; i < SHARE_SIZE; i += threadCountGlobal)
 	{
 		xs[i_thread] = X[step+i];
+		__syncthreads();
 		for (j = 0; j < 2 * M; j++)
 		{
 			xs[i_thread] = (double)Ac[i] * xs[i_thread] * (xs[i_thread] * Cc[i] + Bc[i]) / Dc[i];
 		}
+		__syncthreads();
 		X[step+i] = xs[i_thread];
 	}
 
@@ -182,6 +184,8 @@ int main()
 
 						// Launch a kernel on the GPU with one thread for each element.
 						func_Kernel << <blocks[numB], blocksize[numT] >> > (/*dev_a, dev_b, dev_c, dev_d,*/ dev_x, stepInArr);
+						// cudaDeviceSynchronize waits for the kernel to finish
+						cudaDeviceSynchronize();
 					}
 
 					
@@ -192,8 +196,7 @@ int main()
 
 					
 
-					// cudaDeviceSynchronize waits for the kernel to finish
-					cudaDeviceSynchronize();
+					
 
 					// Copy output vector from GPU buffer to host memory.
 					cudaMemcpy(X, dev_x, N * sizeof(double), cudaMemcpyDeviceToHost);
