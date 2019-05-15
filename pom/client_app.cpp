@@ -107,19 +107,19 @@ bool ClientApplication::Init(bool bConsoleMode)
 		pBalloon->SetModel(pBalloonModel);
 
 		pAttr = pState->GetAttribute("POSITION");
-		pAttr->SetSerializationMode(TA_StateAttribute::SERIALIZE_WITH_CONSTANT_RATE); //ãğóáî ãîâîğÿ ÷àñòîòà îáíîâëåíèÿ ó äğóãèõ ó÷àñòíèêîâ
-		pAttr->SetSerializationRate(1.0);											//íàïğèìåğ íà ñòîğîíå ñåğâåğà.
-		pAttr->EnableFiltering(false);				//ïğè false - îáíîâëåíèå ïîëó÷àåòñÿ òàêèì, êàê áóäòî ğûâêè
-													//ïğè true - ıòè ğûâêè íå ñòàíîâÿòñÿ ñòîëü "êâàäğàòíûìè". Òî åñòü ïîëó÷àåòñÿ "ñãëàæåííûé ğûâîê"
+		pAttr->SetSerializationMode(TA_StateAttribute::SERIALIZE_WITH_CONSTANT_RATE); //Ğ³Ñ€ÑƒĞ±Ğ¾ Ğ³Ğ¾Ğ²Ğ¾Ñ€Ñ Ñ‡Ğ°ÑÑ‚Ğ¾Ñ‚Ğ° Ğ¾Ğ±Ğ½Ğ¾Ğ²Ğ»ĞµĞ½Ğ¸Ñ Ñƒ Ğ´Ñ€ÑƒĞ³Ğ¸Ñ… ÑƒÑ‡Ğ°ÑÑ‚Ğ½Ğ¸ĞºĞ¾Ğ²
+		pAttr->SetSerializationRate(1.0);											//Ğ½Ğ°Ğ¿Ñ€Ğ¸Ğ¼ĞµÑ€ Ğ½Ğ° ÑÑ‚Ğ¾Ñ€Ğ¾Ğ½Ğµ ÑĞµÑ€Ğ²ĞµÑ€Ğ°.
+		pAttr->EnableFiltering(false);				//Ğ¿Ñ€Ğ¸ false - Ğ¾Ğ±Ğ½Ğ¾Ğ²Ğ»ĞµĞ½Ğ¸Ğµ Ğ¿Ğ¾Ğ»ÑƒÑ‡Ğ°ĞµÑ‚ÑÑ Ñ‚Ğ°ĞºĞ¸Ğ¼, ĞºĞ°Ğº Ğ±ÑƒĞ´Ñ‚Ğ¾ Ñ€Ñ‹Ğ²ĞºĞ¸
+													//Ğ¿Ñ€Ğ¸ true - ÑÑ‚Ğ¸ Ñ€Ñ‹Ğ²ĞºĞ¸ Ğ½Ğµ ÑÑ‚Ğ°Ğ½Ğ¾Ğ²ÑÑ‚ÑÑ ÑÑ‚Ğ¾Ğ»ÑŒ "ĞºĞ²Ğ°Ğ´Ñ€Ğ°Ñ‚Ğ½Ñ‹Ğ¼Ğ¸". Ğ¢Ğ¾ ĞµÑÑ‚ÑŒ Ğ¿Ğ¾Ğ»ÑƒÑ‡Ğ°ĞµÑ‚ÑÑ "ÑĞ³Ğ»Ğ°Ğ¶ĞµĞ½Ğ½Ñ‹Ğ¹ Ñ€Ñ‹Ğ²Ğ¾Ğº"
 	//	pAttr->SetSerializationRate(45.0);											
 	//	pAttr->EnableFiltering(false);				
 		//pAttr->SetSerializationMode(TA_StateAttribute::SERIALIZE_ON_EVERY_CHANGE);
 		//pAttr->SetSerializationRate(5.0);
 
 		pAttr = pState->GetAttribute("SCALE");
-		pAttr->SetValue(TA_Point3F(4.0f)); //x = y = z = ÷èñëî. ìàñøòàá ïî îñÿì îòíîñèòåëüíî èñõîäíîãî ğàçìåğà ïî èäåè
+		pAttr->SetValue(TA_Point3F(4.0f)); //x = y = z = Ñ‡Ğ¸ÑĞ»Ğ¾. Ğ¼Ğ°ÑÑˆÑ‚Ğ°Ğ± Ğ¿Ğ¾ Ğ¾ÑÑĞ¼ Ğ¾Ñ‚Ğ½Ğ¾ÑĞ¸Ñ‚ĞµĞ»ÑŒĞ½Ğ¾ Ğ¸ÑÑ…Ğ¾Ğ´Ğ½Ğ¾Ğ³Ğ¾ Ñ€Ğ°Ğ·Ğ¼ĞµÑ€Ğ° Ğ¿Ğ¾ Ğ¸Ğ´ĞµĞ¸
 
-		// Ñîçäàíèå êîíòğîëëåğà ğàíåå çàğåãåñòèğîâàííîãî è åãî íàçíà÷åíèå íà îáúåêò
+		// Ğ¡Ğ¾Ğ·Ğ´Ğ°Ğ½Ğ¸Ğµ ĞºĞ¾Ğ½Ñ‚Ñ€Ğ¾Ğ»Ğ»ĞµÑ€Ğ° Ñ€Ğ°Ğ½ĞµĞµ Ğ·Ğ°Ñ€ĞµĞ³ĞµÑÑ‚Ğ¸Ñ€Ğ¾Ğ²Ğ°Ğ½Ğ½Ğ¾Ğ³Ğ¾ Ğ¸ ĞµĞ³Ğ¾ Ğ½Ğ°Ğ·Ğ½Ğ°Ñ‡ĞµĞ½Ğ¸Ğµ Ğ½Ğ° Ğ¾Ğ±ÑŠĞµĞºÑ‚
 		BalloonController* balcon = new BalloonController();
 		TA_Controller* pController = balcon;
 		pBalloon->SetController(pController);
@@ -147,11 +147,11 @@ bool ClientApplication::Init(bool bConsoleMode)
 		pAttr = pState->GetAttribute("SCALE");
 		pAttr->SetValue(TA_Point3F(4.0f));
 
-		//òîæå, ÷òî è äëÿ øàğà, òîëüêî äëÿ íåãî //âîïğîñ ïğî ğåãèñòğàöèş
+		//Ñ‚Ğ¾Ğ¶Ğµ, Ñ‡Ñ‚Ğ¾ Ğ¸ Ğ´Ğ»Ñ ÑˆĞ°Ñ€Ğ°, Ñ‚Ğ¾Ğ»ÑŒĞºĞ¾ Ğ´Ğ»Ñ Ğ½ĞµĞ³Ğ¾ //Ğ²Ğ¾Ğ¿Ñ€Ğ¾Ñ Ğ¿Ñ€Ğ¾ Ñ€ĞµĞ³Ğ¸ÑÑ‚Ñ€Ğ°Ñ†Ğ¸Ñ
 		AvatarController* avacon = new AvatarController();
 		TA_Controller* pController = avacon;
-		avacon->pCam = pCamera;		//ïîëîæåíèå êàìåğû àâàòàğà áåğåì â êà÷åñòâå èñõîäíîãî îò ãëàâíîãî
-									//äâèæåíèå ìîæíî âûïîëíÿòü êíîïêàìè ãëàâíîé êàìåğû WASD
+		avacon->pCam = pCamera;		//Ğ¿Ğ¾Ğ»Ğ¾Ğ¶ĞµĞ½Ğ¸Ğµ ĞºĞ°Ğ¼ĞµÑ€Ñ‹ Ğ°Ğ²Ğ°Ñ‚Ğ°Ñ€Ğ° Ğ±ĞµÑ€ĞµĞ¼ Ğ² ĞºĞ°Ñ‡ĞµÑÑ‚Ğ²Ğµ Ğ¸ÑÑ…Ğ¾Ğ´Ğ½Ğ¾Ğ³Ğ¾ Ğ¾Ñ‚ Ğ³Ğ»Ğ°Ğ²Ğ½Ğ¾Ğ³Ğ¾
+									//Ğ´Ğ²Ğ¸Ğ¶ĞµĞ½Ğ¸Ğµ Ğ¼Ğ¾Ğ¶Ğ½Ğ¾ Ğ²Ñ‹Ğ¿Ğ¾Ğ»Ğ½ÑÑ‚ÑŒ ĞºĞ½Ğ¾Ğ¿ĞºĞ°Ğ¼Ğ¸ Ğ³Ğ»Ğ°Ğ²Ğ½Ğ¾Ğ¹ ĞºĞ°Ğ¼ĞµÑ€Ñ‹ WASD
 		pAvatar->SetController(pController);
 		pController->Enable();
 
