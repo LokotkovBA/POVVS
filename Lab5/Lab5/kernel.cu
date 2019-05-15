@@ -5,51 +5,114 @@
 #include "targ.h"
 #include <stdio.h>
 #include <cstdint>
+#include <conio.h>
+
+#define N 5
+unsigned char* data1;
+unsigned width, height, pbpp;
 
 
-__global__ void bilinear_interpolation_kernel(uint8_t *output, uint8_t *input, uint8_t pitchOutput, uint8_t pitchInput, uint8_t bytesPerPixelInput, uint8_t bytesPerPixelOutput, float xRatio, float yRatio) {
-	int x = (int)(xRatio * blockIdx.x);
-	int y = (int)(yRatio * blockIdx.y);
+__global__ void fun_kernel(unsigned char* result_data, unsigned char* data1, int height, int width, int steps)
+{
+	int thread = blockIdx.x * blockDim.x + threadIdx.x;
 
-	uint8_t *a; uint8_t *b; uint8_t *c; uint8_t *d;
-	float xDist, yDist, blue, red, green;
+	int neww = (width - 1)*N + 1;
+	int newh = (height - 1)*N + 1;
+	float res, d1, d2, d3, d4, u, t;
+	int h, w, p1, p2, p3, p4;
 
-	// X and Y distance difference
-	xDist = (xRatio * blockIdx.x) - x;
-	yDist = (yRatio * blockIdx.y) - y;
+	float pom = (height - 1) / (newh - 1);
+	float pom2 = (width - 1) / (neww - 1);
 
-	// Points
-	a = input + y * pitchInput + x * bytesPerPixelInput;
-	b = input + y * pitchInput + (x + 1) * bytesPerPixelInput;
-	c = input + (y + 1) * pitchInput + x * bytesPerPixelInput;
-	d = input + (y + 1) * pitchInput + (x + 1) * bytesPerPixelInput;
 
-	// Calc
-	blue = (a[2])*(1 - xDist)*(1 - yDist) + (b[2])*(xDist)*(1 - yDist) + (c[2])*(yDist)*(1 - xDist) + (d[2])*(xDist * yDist);
+	for (int j = 0; j < steps; j++)
+	{
+		res = (thread*steps + j) * pom;
+		h = (int)floor(res);
+		if (h < 0) {
+			h = 0;
+		}
+		else {
+			if (h >= height - 1) {
+				h = height - 2;
+			}
+		}
+		u = res - h;
+		for (int i = thread; i < neww; i++)
+		{
+			res = (i) * pom2;
+			w = (int)floor(res);
+			if (w < 0) {
+				w = 0;
+			}
+			else {
+				if (w >= width - 1) {
+					w = width - 2;
+				}
+				t = res - w;
 
-	uint8_t *p = output + blockIdx.y * pitchOutput + blockIdx.x * bytesPerPixelOutput;
-	*(uint32_t*)p = 0xff000000 | ((((int)red) << 16)) | ((((int)green) << 8)) | ((int)blue);
+				/* Коэффициенты */
+				d1 = (1 - t) * (1 - u);
+				d2 = t * (1 - u);
+				d3 = t * u;
+				d4 = (1 - t) * u;
+
+				/* Окрестные пиксели: a[i][j] */
+				p1 = data1[w + h * width];
+				p2 = data1[w + h * width + 1];
+				p3 = data1[w + 1 + h * width + 1];
+				p4 = data1[w + 1 + h * width];
+
+				result_data[i + (thread*steps + j)* neww] = p1 * d1 + p2 * d2 + p3 * d3 + p4 * d4;
+			}
+		}
+	}
 }
-
 
 int main()
 {
-	unsigned char* data;
-
-
-	unsigned width, height, pbpp;
-	int blocks = 8;
-	if (!Targa2Array("C:/Users/B.Lokotkov/Desktop/_git/POVVS/Lab5/sample2.tga", &data, &width, &height, &pbpp))
+	int blocks = 256;
+	int blocksize = 512;
+	if (!Targa2Array("C:/Users/B.Lokotkov/Desktop/_git/POVVS/Lab5/sample2.tga", &data1, &width, &height, &pbpp))
 	{
 		std::cout << "Can't read file";
 		return -1;
 	}
-	int N, nblocks, nthreads;
-	std::cout << "N = ";
-	std::cin >> N;
+	int neww = (width - 1)*N + 1;
+	int newh = (height - 1)*N + 1;
+	int steps;
+	float elapsedTime;
+	cudaEvent_t start, stop; //Индентификатор событий
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
 
-    return 0;
+	unsigned char* dev_data;
+	unsigned char* dev_result_data;
+	unsigned char* result_data = new unsigned char[neww * newh];
+
+	cudaMalloc((void**)&dev_data, width * height * sizeof(unsigned char));
+	cudaMalloc((void**)&dev_result_data, neww * newh * sizeof(unsigned char));
+
+	steps = (int)newh / (blocks*blocksize);
+
+	cudaEventRecord(start, 0); //Фиксация события start
+	cudaMemcpy(dev_data, data1, height * width * sizeof(unsigned char), cudaMemcpyHostToDevice);
+	cudaMemcpy(dev_result_data, result_data, height * width * sizeof(unsigned char), cudaMemcpyHostToDevice);
+
+	fun_kernel << < blocks, blocksize >> > (dev_result_data, dev_data, height, width, steps);
+	cudaMemcpy(result_data, dev_result_data, newh * neww * sizeof(unsigned char), cudaMemcpyDeviceToHost);
+	cudaEventRecord(stop, 0); //Фиксация события stop
+	cudaEventSynchronize(stop); //Синхронизация host и device по событию stop
+
+
+	cudaEventElapsedTime(&elapsedTime, start, stop);
+	std::cout << "Time: " << elapsedTime;
+	Array2Targa("result.tga", result_data, neww, newh, pbpp);
+	cudaFree(dev_data);
+	cudaFree(dev_result_data);
+	_getch();
 }
+
 
 /*// Helper function for using CUDA to add vectors in parallel.
 cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size)
